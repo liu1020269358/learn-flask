@@ -7,4 +7,4 @@ main = Blueprint('main', __name__)
 
 from . import views,errors
 #从app\main文件夹中导入views和errors模块
-#views模块保存程序的路由，errors模块保存程序的错误处理程序
+#views模块保存主页面的路由，errors模块保存程序的错误处理程序
