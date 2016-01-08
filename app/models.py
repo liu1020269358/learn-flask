@@ -3,6 +3,8 @@
 from . import db, login_manager
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask.ext.login import UserMixin
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from flask import current_app
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -38,17 +40,49 @@ class User(UserMixin, db.Model):
 	#设定password_hash列
 	email = db.Column(db.String(64), unique = True, index = True)
 	#设定mail列
+	confirmed = db.Column(db.Boolean, default = False)
+	#设定confirmed列，为布尔属性，默认为False，为True说明已被验证过
 	@property
 	def password(self):
 		raise AttributeError('password is not a readable attribute')
 	#如果试图读取password属性则抛出AttributeError
+	
 	@password.setter
 	def password(self, password):
 		self.password_hash = generate_password_hash(password)
 	#将password哈希后传给self.password_hash,可通过User.password = ''调用
+	
 	def verify_password(self, password):
 		return check_password_hash(self.password_hash, password)
 	#验证password是否输入正确
+	
+	def generate_confirmation_token(self, expiration = 3600):
+	#生成加密令牌
+		s = Serializer(current_app.config['SECRET_KEY'], expiration)
+		#接收SECRET_KEY为参数生成一个JSON Web签名，expiration为有效时间
+		return s.dumps({'confirm': self.id})
+		#将self.id生成一个加密签名，再生成一个令牌字符串
+		
+	def confirm(self, token):
+	#验证令牌
+		s = Serializer(current_app.config['SECRET_KEY'])
+		#接收SECRET_KEY为参数生成一个JSON Web签名
+		try:
+			data = s.loads(token)
+			#解码令牌
+		except:
+			return False
+			#如果令牌过期或令牌错误，则返回False
+		#以上是为了验证接收的token是否为SECRET_KEY的加密令牌
+		if data.get('confirm') != self.id:
+			return False
+			#如果令牌中的id和存储在current_user中已登录的用户id不同，则返回False
+		self.confirmed = True
+		#以上验证都通过的话，将confirmed列（属性）设为True
+		db.session.add(self)
+		#将表单数据提交到数据库
+		return True
+		#返回True
 	def __repr__(self):
 		return '<User %r>' % self.username
 		#返回一个字符串，以供调试和测试

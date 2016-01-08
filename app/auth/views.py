@@ -2,9 +2,11 @@
 
 from flask import render_template, redirect, request, url_for, flash
 from . import auth
-from flask.ext.login import login_user, login_required, logout_user
+from .. import db
+from flask.ext.login import login_user, login_required, logout_user, current_user
 from ..models import User
-from .forms import LoginForm
+from ..email import send_email
+from .forms import LoginForm, RegistrationForm
 
 @auth.route('/login', methods = ['GET', 'POST'])
 #路由路由为/login
@@ -30,9 +32,92 @@ def login():
 	
 @auth.route('/logout')
 @login_required
+#这个页面需要登录才能访问
 def logout():
 	logout_user()
 	#登出用户
 	flash('You have been logged out.')
 	return redirect(url_for('main.index'))
 	#登出到主页面
+
+@auth.route('/register', methods = ['GET', 'POST'])
+def register():
+	form = RegistrationForm()
+	#创建注册页面实例
+	if form.validate_on_submit():
+	#如果POST请求有效
+		user = User(email = form.email.data,
+					username = form.username.data,
+					password = form.password.data)
+		#创建User实例
+		db.session.add(user)
+		#将这个新注册用户添加到数据库
+		db.session.commit()
+		#提交数据
+		token = user.generate_confirmation_token()
+		#将用户的SECRET_KEY生成加密令牌
+		send_email(user.email, 'Confirm Your Account',
+					'auth/email/confirm', user = user, token = token)
+		#发送邮件
+		flash('A confirmation email has been sent to you by email.')
+		#发出消息，告诉用户验证邮件已发出
+		return redirect(url_for('main.index'))
+		#重定向到主页面
+	return render_template('auth/register.html', form = form)
+	#把注册页面实例传入，渲染表单
+
+@auth.route('/confirm/<token>')
+@login_required
+#这个页面需要登录才能访问
+def confirm(token):
+#创建一个验证加密令牌的类confirm
+	if current_user.confirmed:
+		return redirect(url_for('main.index'))
+	#如果当前的令牌已被验证过，则重定向到主页面
+	if current_user.confirm(token):
+		flash('You have confirmed your account. Thanks!')
+	#如果验证成功，弹出消息
+	else:
+		flash('The confirmation link is invalid or has expired.')
+	#如果验证失败，弹出消息
+	return redirect(url_for('main.index'))
+	#重定向到主页面
+
+@auth.before_app_request
+#在全局条件下在每个请求之前
+def before_request():
+	if current_user.is_authenticated\
+			and not current_user.confirmed\
+			and request.endpoint[:5] != 'auth.'\
+			and request.endpoint != 'static':
+			#当前用户已登录
+			#当前用户还未验证
+			#请求的路径不在认证蓝本中
+			#请求的路径不是'static'
+		return redirect(url_for('auth.unconfirmed'))
+		#重定向到'未认证页面'
+
+@auth.route('/unconfirmed')
+#未认证页面
+def unconfirmed():
+	if current_user.is_anonymous or current_user.confirmed:
+	#如果当前用户是匿名的或当前用户已认证成功
+		return redirect(url_for('main.index'))
+		#重定向到主页面
+	return render_template('auth/unconfirmed.html')
+	#渲染未认证页面
+
+@auth.route('/confirm')
+#认证页面
+@login_required
+def resend_confirmation():
+#这是由未认证页面连接的页面，以防之前的邮件丢失，请求再次发送邮件
+	token = current_user.generate_confirmation_token()
+	#将当前用户的SECRET_KEY生成加密令牌
+	send_email(current_user.email, 'Confirm Your Account',
+				'auth/email/confirm', user = current_user, token = token)
+	#发送邮件给当前用户的邮箱
+	flash('A confirmation email has been sent to you by email.')
+	#弹出消息
+	return redirect(url_for('main.index'))
+	#重定向到主页面

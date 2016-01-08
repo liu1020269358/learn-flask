@@ -32,9 +32,9 @@ class DevelopmentConfig(Config):
 	#电子邮件服务器的端口
 	MAIL_USE_SSL = True
 	#启用TLS协议
-	MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+	MAIL_USERNAME = '1020269358@qq.com'
 	#邮件账户的用户名
-	MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+	MAIL_PASSWORD = 'www5030706'
 	#邮件账户的密码
 	SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
 		'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
