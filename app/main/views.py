@@ -27,24 +27,33 @@ def user(username):
 @main.route('/edit-profile', methods = ['GET', 'POST'])
 @login_required
 def edit_profile():
+#修改资料
 	form = EditProfileForm()
 	if form.validate_on_submit():
 		current_user.name = form.name.data
 		current_user.location = form.location.data
 		current_user.about_me = form.about_me.data
 		db.session.add(current_user)
+		#若提交成功，将表单中的数据提交到数据库
 		flash('Your profile has been updated.')
+		#显示修改成功的消息
 		return redirect(url_for('.user', username = current_user.username))
+		#重定向到修改成功后的页面，即user/username，即用户资料页面
 	form.name.data = current_user.name
 	form.location.data = current_user.location
 	form.about_me.data = current_user.about_me
+	#未修改时表单的默认数据为之前的数据
 	return render_template('edit_profile.html', form = form)
+	#将form传出，渲染修改资料的页面，
 
 @main.route('/edit_profile/<int:id>', methods = ['GET', 'POST'])
 @login_required
+#用户需已登录
 @admin_required
 def edit_profile_admin(id):
+#管理员修改资料
 	user = User.query.get_or_404(id)
+	#get_or_404(id)，若没有找到id，则返回404错误
 	form = EditProfileAdminForm(user = user)
 	if form.validate_on_submit():
 		user.email = form.email.data
@@ -65,3 +74,4 @@ def edit_profile_admin(id):
 	form.location.data = user.location
 	form.about_me.data = user.about_me
 	return render_template('edit_profile.html', form = form, use = user)
+	#和edit_profile类似

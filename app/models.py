@@ -190,7 +190,7 @@ class User(UserMixin, db.Model):
 		#根据__MRO__序列，访问User类的下一个类的初始化函数给本实例初始化
 		if self.role is None:
 		#如果用户没有角色
-			if self.email == '1020269358@qq.com':
+			if self.email == current_app.config['FLASKY_ADMIN']:
 			#如果用户的email为本程序配置中'FLASKY_ADMIN'即管理员的邮件
 				self.role = Role.query.filter_by(permissions = 0xff).first()
 				#给予该用户管理员的权限

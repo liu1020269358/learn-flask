@@ -50,13 +50,16 @@ class ChangePasswordForm(Form):
 		Required(), EqualTo('password2', message = 'Passwords must match')])
 	password2 = PasswordField('Confirm password', validators = [Required()])
 	submit = SubmitField('Update Password')
+#修改密码的表单
 	
 class PasswordResetRequestForm(Form):
 	email = StringField('Email', validators=[Required(), Length(1, 64),
 											Email()])
 	submit = SubmitField('Reset Password')
+#发出重置密码请求的表单
 
 class PasswordResetForm(Form):
+#重置密码的表单
 	email = StringField('Email', validators=[Required(), Length(1, 64),
 											Email()])
 	password = PasswordField('New Password', validators=[
@@ -67,8 +70,10 @@ class PasswordResetForm(Form):
 	def validate_email(self, field):
 		if User.query.filter_by(email=field.data).first() is None:
 			raise ValidationError('Unknown email address.')
+	#验证邮箱，若邮箱不存在，则报错
 
 class ChangeEmailForm(Form):
+#发出修改邮箱的请求的表单
 	email = StringField('New Email', validators=[Required(), Length(1, 64),
 												Email()])
 	password = PasswordField('Password', validators=[Required()])
@@ -77,3 +82,4 @@ class ChangeEmailForm(Form):
 	def validate_email(self, field):
 		if User.query.filter_by(email=field.data).first():
 			raise ValidationError('Email already registered.')
+	#验证邮箱，若邮箱已存在，则报错

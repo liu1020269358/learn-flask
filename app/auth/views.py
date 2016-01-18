@@ -68,6 +68,7 @@ def register():
 	#把注册页面实例传入，渲染表单
 
 @auth.route('/confirm/<token>')
+#点击了发送到邮箱的邮件中的令牌链接后的url
 @login_required
 #这个页面需要登录才能访问
 def confirm(token):
@@ -127,55 +128,77 @@ def resend_confirmation():
 	
 @auth.route('change-password', methods = ['GET', 'POST'])
 @login_required
+#用户必须登录状态
 def change_password():
+#修改密码
 	form = ChangePasswordForm()
 	if form.validate_on_submit():
 		if current_user.verify_password(form.old_password.data):
+		#如果输入的旧密码和数据库中的密码一样
 			current_user.password = form.password.data
 			db.session.add(current_user)
 			flash('Your password has been updated')
 			return redirect(url_for('main.index'))
+			#如提交成功，数据传入数据库，显示修改成功的信息，重定向到主页面
 		else:
 			flash('Invalid Password')
+			#若密码不一样，显示密码错误
 	return render_template('auth/change_password.html', form = form)
+	#传入表单，渲染修改密码页面
 	
 @auth.route('/reset', methods=['GET', 'POST'])
 def password_reset_request():
+#重置密码
 	if not current_user.is_anonymous:
 		return redirect(url_for('main.index'))
+	#若用户处于登录状态，则重定向至主页面
 	form = PasswordResetRequestForm()
 	if form.validate_on_submit():
 		user = User.query.filter_by(email=form.email.data).first()
+		#user为表单中输入的邮箱对应的用户
 		if user:
+		#如果用户存在
 			token = user.generate_reset_token()
+			#重置密码的令牌
 			send_email(user.email, 'Reset Your Password',
 					'auth/email/reset_password',
 					user=user, token=token,
 					next=request.args.get('next'))
+					#发送邮件
 					#next参数的作用为？
 			flash('An email with instructions to reset your password has been '
 				'sent to you.')
+			#弹出消息
 		return redirect(url_for('auth.login'))
+		#重定向到登录页面
 	return render_template('auth/reset_password.html', form=form)
+	#渲染发出重置密码请求的页面
 
 @auth.route('/reset/<token>', methods=['GET', 'POST'])
+#点击了发送到邮箱的邮件中的令牌链接后的url
 def password_reset(token):
 	if not current_user.is_anonymous:
 		return redirect(url_for('main.index'))
+	#如果用户是登录状态，重定向到主页面
 	form = PasswordResetForm()
 	if form.validate_on_submit():
 		user = User.query.filter_by(email=form.email.data).first()
 		if user is None:
 			return redirect(url_for('main.index'))
+			#如果提交成功但用户不存在，重定向到主页面
 		if user.reset_password(token, form.password.data):
 			flash('Your password has been updated.')
 			return redirect(url_for('auth.login'))
+			#如果密码修改成功，弹出消息，重定向到登录页面
 		else:
 			return redirect(url_for('main.index'))
+			#如果密码修改失败，重定向到主页面
 	return render_template('auth/reset_password.html', form=form)
+	#渲染重置密码的页面
 	
 @auth.route('/change-email', methods=['GET', 'POST'])
 @login_required
+#用户必需已登录
 def change_email_request():
 	form = ChangeEmailForm()
 	if form.validate_on_submit():
@@ -191,12 +214,18 @@ def change_email_request():
 		else:
 			flash('Invalid email or password.')
 	return render_template("auth/change_email.html", form=form)
+#渲染发出修改邮箱的请求的页面，和重置密码类似
 
 @auth.route('/change-email/<token>')
 @login_required
+#点击了发送到邮箱的邮件中的令牌链接后的url
+#用户已登录
 def change_email(token):
 	if current_user.change_email(token):
 		flash('Your email address has been updated.')
 	else:
 		flash('Invalid request.')
 	return redirect(url_for('main.index'))
+#修改成功，则弹出消息
+#失败也弹出消息
+#重定向到主页面
