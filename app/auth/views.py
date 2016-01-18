@@ -87,16 +87,18 @@ def confirm(token):
 @auth.before_app_request
 #在全局条件下在每个请求之前
 def before_request():
-	if current_user.is_authenticated\
-			and not current_user.confirmed\
-			and request.endpoint[:5] != 'auth.'\
-			and request.endpoint != 'static':
-			#当前用户已登录
-			#当前用户还未验证
-			#请求的路径不在认证蓝本中
-			#请求的路径不是'static'
-		return redirect(url_for('auth.unconfirmed'))
-		#重定向到'未认证页面'
+	if current_user.is_authenticated:
+		current_user.ping()
+		#如果用户验证成功，则调用ping方法，last_seen会被加入到session中
+		if not current_user.confirmed\
+				and request.endpoint[:5] != 'auth.'\
+				and request.endpoint != 'static':
+		#当前用户已登录
+		#当前用户还未验证
+		#请求的路径不在认证蓝本中
+		#请求的路径不是'static'
+			return redirect(url_for('auth.unconfirmed'))
+			#重定向到'未认证页面'
 
 @auth.route('/unconfirmed')
 #未认证页面

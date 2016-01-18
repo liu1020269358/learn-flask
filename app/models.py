@@ -2,14 +2,23 @@
 
 from . import db, login_manager
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask.ext.login import UserMixin
+from flask.ext.login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app
+from datetime import datetime
 
-@login_manager.user_loader
-def load_user(user_id):
-	return User.query.get(int(user_id))
-	#接收user_id，如果用户存在，则返回用户对象，否则返回None
+
+class Permission:
+	FOLLOW = 0x01
+	#ob00000001
+	COMMENT = 0x02
+	#ob00000010
+	WRITE_ARTICLES = 0x04
+	#ob00000100
+	MODERATE_COMMENTS = 0x08
+	#ob00001000
+	ADMINISTER = 0x80
+	#ob10000000
 	
 class Role(db.Model):
 #定义Roel模型
@@ -19,9 +28,52 @@ class Role(db.Model):
 	#设定id列，这是表的主键
 	name = db.Column(db.String(64), unique=True)
 	#设定name列，不允许出现重复的值
+	default = db.Column(db.Boolean, default = False, index = True)
+	#defualt默认为False,是为了用户角色的权限而设计的
+	permissions = db.Column(db.Integer)
+	#permissions列中记录的是有哪些权限
 	users = db.relationship('User', backref='role', lazy='dynamic')
 	#定义users属性为与Role关联的模型的列表
 	#若将uselist设为False，则不返回列表，而使用标量值
+	
+	@staticmethod
+	#可以在类上调用，即不需要创建出Role实例就可以调用这个方法
+	#因为insert_roles方法是用于更新角色，如果角色不存在，再创建新角色
+	#匿名角色不需要表示出来，这个角色就是为了表示不再数据库中的用户
+	#目前只有三种角色（包括匿名四种）
+	def insert_roles():
+		roles = {
+		#将三种权限的用户存放在roles字典中
+		#实际为roles = {'User': (0x07, True)
+		#				'Moderator': (0x0f, False)
+		#				'Administrator': (0xff, False)}
+			'User': (Permission.FOLLOW |
+					Permission.COMMENT |
+					Permission.WRITE_ARTICLES, True),
+			#User权限的用户可以follow.comment.write articles
+			#第一个参数实际上为ob00000111,第二个参数设为True，表示默认的用户
+			'Moderator': (Permission.FOLLOW |
+						Permission.COMMENT |
+						Permission.WRITE_ARTICLES |
+						Permission.MODERATE_COMMENTS, False),
+			#Moderator权限的用户可以follow. comment. write articles. moderate comments
+			'Administrator': (0xff, False)
+		}	#Administrator权限的用户具有所有的权限
+		for r in roles:
+			role = Role.query.filter_by(name = r).first()
+			#将roles中的角色赋给r
+			if role is None:
+				role = Role(name = r)
+				#如果这种角色在数据库中不存在，即为新角色，那么创建一个新的角色
+			role.permissions = roles[r][0]
+			#角色的权限为r的第一个参数
+			role.default = roles[r][1]
+			#角色的默认状态为r的第二个参数
+			db.session.add(role)
+			#添加角色
+		db.session.commit()
+		#提交到数据苦衷
+	
 	def __repr__(self):
 		return '<Role %r>' % self.name
 		#返回一个字符串，以供调试和测试
@@ -31,17 +83,25 @@ class User(UserMixin, db.Model):
 	__tablename__ = 'users'
 	#表单名字为users
 	id = db.Column(db.Integer, primary_key=True)
-	#设定id列，这是表的主键
+	#设定id字段，这是表的主键
 	username = db.Column(db.String(64), unique=True, index=True)
-	#设定username列，不允许出现重复的值，创建索引
+	#设定username字段，不允许出现重复的值，创建索引
 	role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
 	#定义role_id列为外键，roles.id表明此列的值
 	password_hash = db.Column(db.String(128))
-	#设定password_hash列
+	#设定password_hash字段
 	email = db.Column(db.String(64), unique = True, index = True)
-	#设定mail列
+	#设定email字段
 	confirmed = db.Column(db.Boolean, default = False)
 	#设定confirmed列，为布尔属性，默认为False，为True说明已被验证过
+	name = db.Column(db.String(64))
+	location = db.Column(db.String(64))
+	about_me = db.Column(db.Text())
+	member_since = db.Column(db.DateTime(), default = datetime.utcnow)
+	last_seen = db.Column(db.DateTime(), default = datetime.utcnow)
+	#新的字段name, Location, about_me, member_since, last_seen
+	#用来保存用户的姓名，所在地，自我接受，注册日期和最后访问日期
+	#default参数接收函数，在db.Coulumn()时会调用default()
 	@property
 	def password(self):
 		raise AttributeError('password is not a readable attribute')
@@ -87,7 +147,8 @@ class User(UserMixin, db.Model):
 	def generate_reset_token(self, expiration=3600):
 		s = Serializer(current_app.config['SECRET_KEY'], expiration)
 		return s.dumps({'reset': self.id})
-		
+	#生成重置密码的令牌
+	
 	def reset_password(self, token, new_password):
 		s = Serializer(current_app.config['SECRET_KEY'])
 		try:
@@ -99,11 +160,13 @@ class User(UserMixin, db.Model):
 		self.password = new_password
 		db.session.add(self)
 		return True
-		
+	#重置密码的验证函数，如果重置成功，则返回True
+	
 	def generate_email_change_token(self, new_email, expiration=3600):
 		s = Serializer(current_app.config['SECRET_KEY'], expiration)
 		return s.dumps({'change_email': self.id, 'new_email': new_email})
-		
+	#生成重置邮箱的令牌
+	
 	def change_email(self, token):
 		s = Serializer(current_app.config['SECRET_KEY'])
 		try:
@@ -120,7 +183,57 @@ class User(UserMixin, db.Model):
 		self.email = new_email
 		db.session.add(self)
 		return True
+	#重置邮箱的验证函数，如果重置邮箱成功，则返回True，类似注册函数
+	
+	def __init__(self, **kwargs):
+		super(User, self).__init__(**kwargs)
+		#根据__MRO__序列，访问User类的下一个类的初始化函数给本实例初始化
+		if self.role is None:
+		#如果用户没有角色
+			if self.email == '1020269358@qq.com':
+			#如果用户的email为本程序配置中'FLASKY_ADMIN'即管理员的邮件
+				self.role = Role.query.filter_by(permissions = 0xff).first()
+				#给予该用户管理员的权限
+			if self.role is None:
+			#如果用户没有角色且不是管理员
+				self.role = Role.query.filter_by(default = True).first()
+				#给予该用户普通用户的权限
+	
+	def can(self, permissions):
+	#检验该用户的权限中是否包含请求的权限
+		return self.role is not None and \
+			(self.role.permissions & permissions) == permissions
+		#要同时满足该用户的角色存在且请求的权限在其拥有的权限中时，返回Ture，否则False
+		
+	def is_administrator(self):
+	#检验管理员的权限，如果为管理员权限则返回True
+		return self.can(Permission.ADMINISTER)
+		#用can方法检验
+		
+	def ping(self):
+	#ping方法把last_seen设置为当前时间
+		self.last_seen = datetime.utcnow()
+		db.session.add(self)
+		#提交到session会话中
 		
 	def __repr__(self):
 		return '<User %r>' % self.username
 		#返回一个字符串，以供调试和测试
+
+@login_manager.user_loader
+def load_user(user_id):
+	return User.query.get(int(user_id))
+	#接收user_id，如果用户存在，则返回用户对象，否则返回None
+
+class AnonymousUser(AnonymousUserMixin):
+#匿名用户类
+#这个类是为了能让程序在不检查用户是否登录的条件下
+#就自由调用current_user.can()和current_user.is_administrator()
+	def can(self, permissions):
+		return False
+	#没有任何权限
+	def is_administrator(self):
+		return False
+	#没有管理员权限
+login_manager.anonymous_user = AnonymousUser
+#把AnonymousUser类传给login_manager的anonymous_user属性

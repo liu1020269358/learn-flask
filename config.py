@@ -15,8 +15,8 @@ class Config:
 	#邮件主题的前缀
 	FLASKY_MAIL_SENDER = '1020269358@qq.com'
 	#邮件的发送者
-	FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
-	#邮件的收件人
+	FLASKY_ADMIN = '1020269358@qq.com'
+	#管理员邮箱
 	@staticmethod
 	def init_app(app):
 		pass
