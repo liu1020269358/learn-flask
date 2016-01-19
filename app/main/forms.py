@@ -61,3 +61,7 @@ class EditProfileAdminForm(Form):
 				User.query.filter_by(username = field.data).first():
 			raise ValidationError('Username already in use')
 		#验证用户名是否发生变化，若发生变化且更改后与数据库中已有的username重合，则报错
+
+class PostForm(Form):
+	body = TextAreaField("What's on your mind?", validators = [Required()])
+	submit = SubmitField('Submit')

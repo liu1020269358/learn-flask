@@ -36,11 +36,11 @@ class Role(db.Model):
 	#定义users属性为与Role关联的模型的列表
 	#若将uselist设为False，则不返回列表，而使用标量值
 	
-	@staticmethod
 	#可以在类上调用，即不需要创建出Role实例就可以调用这个方法
 	#因为insert_roles方法是用于更新角色，如果角色不存在，再创建新角色
 	#匿名角色不需要表示出来，这个角色就是为了表示不再数据库中的用户
 	#目前只有三种角色（包括匿名四种）
+	@staticmethod
 	def insert_roles():
 		roles = {
 		#将三种权限的用户存放在roles字典中
@@ -101,7 +101,9 @@ class User(UserMixin, db.Model):
 	last_seen = db.Column(db.DateTime(), default = datetime.utcnow)
 	#新的字段name, Location, about_me, member_since, last_seen
 	#用来保存用户的姓名，所在地，自我接受，注册日期和最后访问日期
-	#default参数接收函数，在db.Coulumn()时会调用default()
+	#default参数接收函数，在db.Column()时会调用default()
+	posts = db.relationship('Post', backref = 'author', lazy = 'dynamic')
+	
 	@property
 	def password(self):
 		raise AttributeError('password is not a readable attribute')
@@ -219,6 +221,13 @@ class User(UserMixin, db.Model):
 	def __repr__(self):
 		return '<User %r>' % self.username
 		#返回一个字符串，以供调试和测试
+
+class Post(db.Model):
+	__tablename__ = 'posts'
+	id = db.Column(db.Integer, primary_key = True)
+	body = db.Column(db.Text)
+	timestamp = db.Column(db.DateTime, index = True, default = datetime.utcnow)
+	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 @login_manager.user_loader
 def load_user(user_id):
