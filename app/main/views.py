@@ -29,7 +29,8 @@ def user(username):
 	if user is None:
 		abort(404)
 		#如果这个用户不存在则抛出404错误页面
-	return render_template('user.html', user = user)
+	posts = user.posts.order_by(Post.timestamp.desc()).all()
+	return render_template('user.html', user = user, posts = posts)
 	#若存在，渲染user.html，把user这个实例传过去
 
 @main.route('/edit-profile', methods = ['GET', 'POST'])
