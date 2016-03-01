@@ -11,21 +11,6 @@ class Config:
 	#这是密匙，以防CSRF攻击
 	SQLALCHEMY_COMMIT_ON_TEARDOWN = True
 	#将其设为True时，每次请求结束后都会自动提交数据库的变动
-	FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'
-	#邮件主题的前缀
-	FLASKY_MAIL_SENDER = '1020269358@qq.com'
-	#邮件的发送者
-	FLASKY_ADMIN = '1020269358@qq.com'
-	#管理员邮箱
-	@staticmethod
-	def init_app(app):
-		pass
-	#对当前环境配置的初始化
-		
-class DevelopmentConfig(Config):
-#开发配置
-	DEBUG = True
-	#开启调试模式
 	MAIL_SERVER = 'smtp.qq.com'
 	#电子邮件服务器的主机名
 	MAIL_PORT = 465
@@ -36,6 +21,23 @@ class DevelopmentConfig(Config):
 	#邮件账户的用户名
 	MAIL_PASSWORD = 'www5030706'
 	#邮件账户的密码
+	FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'
+	#邮件主题的前缀
+	FLASKY_MAIL_SENDER = '1020269358@qq.com'
+	#邮件的发送者
+	FLASKY_ADMIN = '1020269358@qq.com'
+	#管理员邮箱
+	FLASKY_POSTS_PER_PAGE = 20
+	#博客每页显示的数目为20
+	@staticmethod
+	def init_app(app):
+		pass
+	#对当前环境配置的初始化
+		
+class DevelopmentConfig(Config):
+#开发配置
+	DEBUG = True
+	#开启调试模式
 	SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
 		'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
 	#数据库URL从环境变量中导入或为默认URL

@@ -87,7 +87,7 @@ class User(UserMixin, db.Model):
 	username = db.Column(db.String(64), unique=True, index=True)
 	#设定username字段，不允许出现重复的值，创建索引
 	role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
-	#定义role_id列为外键，roles.id表明此列的值
+	#定义role_id外键，roles.id表明此列的值
 	password_hash = db.Column(db.String(128))
 	#设定password_hash字段
 	email = db.Column(db.String(64), unique = True, index = True)
@@ -217,6 +217,29 @@ class User(UserMixin, db.Model):
 		self.last_seen = datetime.utcnow()
 		db.session.add(self)
 		#提交到session会话中
+	
+	@staticmethod
+	def generate_fake(count = 100):
+		from sqlalchemy.exc import IntegrityError
+		from random import seed
+		import forgery_py
+		
+		seed()
+		for i in range(count):
+			u = User(email = forgery_py.internet.email_address(),
+					username = forgery_py.internet.user_name(True),
+					password = forgery_py.lorem_ipsum.word(),
+					confirmed = True,
+					name = forgery_py.address.city(),
+					location = forgery_py.address.city(),
+					about_me = forgery_py.lorem_ipsum.sentence(),
+					member_since = forgery_py.date.date(True))
+			db.session.add(u)
+			try:
+				db.session.commit()
+			except IntegrityError:
+				db.session.rollback()
+	#生成虚拟博客文章
 		
 	def __repr__(self):
 		return '<User %r>' % self.username
@@ -228,6 +251,23 @@ class Post(db.Model):
 	body = db.Column(db.Text)
 	timestamp = db.Column(db.DateTime, index = True, default = datetime.utcnow)
 	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+	#包含主体文本和时间戳和一个外键
+	@staticmethod
+	def generate_fake(count =100):
+		from random import seed, randint
+		import forgery_py
+		
+		seed()
+		user_count = User.query.count()
+		for i in range(count):
+			u = User.query.offset(randint(0, user_count - 1)).first()
+			p = Post(body = forgery_py.lorem_ipsum.sentences(randint(1,3)),
+					timestamp = forgery_py.date.date(True),
+					author = u)
+			db.session.add(p)
+			db.session.commit()
+	#生成虚拟博客文章
+			
 
 @login_manager.user_loader
 def load_user(user_id):

@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 
-from flask import render_template, redirect, url_for, abort, flash
+from flask import render_template, redirect, url_for, abort, flash, request, current_app
 from . import main
 from .. import db
 from ..models import User, Role, Permission, Post
@@ -18,8 +18,18 @@ def index():
 					author = current_user._get_current_object())
 		db.session.add(post)
 		return redirect(url_for('.index'))
-	posts = Post.query.order_by(Post.timestamp.desc()).all()
-	return render_template('index.html', form = form, posts = posts)
+	page = request.args.get('page', 1, type = int)
+	#requset.args为请求的查询字符串
+	#get()中有三个参数，key, default, type 
+	#如果没有指定page,默认为1，type = init为了确保若参数无法转换为整数，返回默认值
+	pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+		page, per_page = current_app.config['FLASKY_POSTS_PER_PAGE'],
+		error_out = False)
+	#Post.timestamp.desc()为按时间戳降序排列
+	#paginate()方法接受三个参数，起始页，每一页的数目，错误标志，True为404，False为空列表
+	posts = pagination.items
+	#迭代器，index.html中要用到
+	return render_template('index.html', form = form, posts = posts, pagination = pagination)
 	#渲染index.html模板
 
 @main.route('/user/<username>')
@@ -29,9 +39,15 @@ def user(username):
 	if user is None:
 		abort(404)
 		#如果这个用户不存在则抛出404错误页面
-	posts = user.posts.order_by(Post.timestamp.desc()).all()
-	return render_template('user.html', user = user, posts = posts)
+	page = request.args.get('page', 1, type = int)
+	pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+		page, per_page = current_app.config['FLASKY_POSTS_PER_PAGE'],
+		error_out = False)
+	posts = pagination.items
+	#同上
+	return render_template('user.html', user = user, posts = posts, pagination = pagination)
 	#若存在，渲染user.html，把user这个实例传过去
+	#把posts, pagination传过去
 
 @main.route('/edit-profile', methods = ['GET', 'POST'])
 @login_required
