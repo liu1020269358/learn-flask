@@ -254,6 +254,8 @@ class Post(db.Model):
 	timestamp = db.Column(db.DateTime, index = True, default = datetime.utcnow)
 	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 	#包含主体文本和时间戳和一个外键
+	body_html = db.Column(db.Text)
+	
 	@staticmethod
 	def generate_fake(count =100):
 		from random import seed, randint
