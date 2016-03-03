@@ -6,6 +6,8 @@ from flask.ext.login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app
 from datetime import datetime
+from markdown import markdown
+import bleach
 
 
 class Permission:
@@ -267,8 +269,23 @@ class Post(db.Model):
 			db.session.add(p)
 			db.session.commit()
 	#生成虚拟博客文章
-			
-
+	
+	@staticmethod
+	def on_changed_body(target, value, oldvalue, initiator):
+	#这个函数的作用是把body字段中的文本渲染成HTML格式，结果保存在body_html中
+		allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
+						'em', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
+						'h1', 'h2', 'h3', 'p']
+		target.body_html = bleach.linkify(bleach.clean(
+			#clean()函数接收HTML和允许使用的HTML标签，删除不在tags中的标签
+			#linkify()函数将纯文本中的URL装换成适当的<a>链接
+			markdown(value, output_format = 'html'),
+			#markdown()函数将Markdown文本装换问HTML
+			tags = allowed_tags, strip = True))
+		
+db.event.listen(Post.body, 'set', Post.on_changed_body)
+#on_changed_body函数注册在body字段上，是SQLAlchemy"set"事件的监听程序
+#意味着制药类实例body字段设了新值，函数就会被自动调用
 @login_manager.user_loader
 def load_user(user_id):
 	return User.query.get(int(user_id))

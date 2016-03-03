@@ -5,6 +5,7 @@ from wtforms import StringField, SubmitField, TextAreaField, BooleanField, Selec
 from wtforms.validators import Required, Length, Regexp, Email
 from wtforms import ValidationError
 from ..models import User, Role
+from flask.ext.pagedown.fields import PageDownField
 
 class NameForm(Form):
 #定义一个继承自Form类的NameForm类
@@ -63,5 +64,6 @@ class EditProfileAdminForm(Form):
 		#验证用户名是否发生变化，若发生变化且更改后与数据库中已有的username重合，则报错
 
 class PostForm(Form):
-	body = TextAreaField("What's on your mind?", validators = [Required()])
+	body = PageDownField("What's on your mind?", validators = [Required()])
 	submit = SubmitField('Submit')
+#提交博客的表单
