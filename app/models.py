@@ -21,6 +21,16 @@ class Permission:
 	#ob00001000
 	ADMINISTER = 0x80
 	#ob10000000
+
+class Follow(db.Model):
+	__tablename__ = 'follows'
+	follower_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+							primary_key = True)
+	followed_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+							primary_key = True)
+	timestamp = db.Column(db.DateTime, default = datetime.utcnow)
+#follower和followed的关联表
+#在使用多对多关系时，要存储两个实体之间的额外信息，在此为timestamp
 	
 class Role(db.Model):
 #定义Roel模型
@@ -105,7 +115,22 @@ class User(UserMixin, db.Model):
 	#用来保存用户的姓名，所在地，自我接受，注册日期和最后访问日期
 	#default参数接收函数，在db.Column()时会调用default()
 	posts = db.relationship('Post', backref = 'author', lazy = 'dynamic')
+	followed = db.relationship('Follow', 
+								foreign_keys = [Follow.follower_id],
+								backref = db.backref('follower', lazy = 'joined'),
+								lazy = 'dynamic',
+								cascade = 'all, delete-orphan')
+	#在此followed为多，follower为一，foreign_keys代表followed对应的外键
+	#db.backref()回引Follow模型，同时lazy = 'joined'
+	#也就是说user.followed.all()会回引到Follow模型
+	#并且加载出followed用户，若为select，则要访问followed才会加载出用户
 	
+	followers = db.relationship('Follow',
+								foreign_keys = [Follow.followed_id],
+								backref = db.backref('followed', lazy = 'joined'),
+								lazy = 'dynamic',
+								cascade = 'all, delete-orphan')
+	#与上面相反
 	@property
 	def password(self):
 		raise AttributeError('password is not a readable attribute')
@@ -242,7 +267,29 @@ class User(UserMixin, db.Model):
 			except IntegrityError:
 				db.session.rollback()
 	#生成虚拟博客文章
-		
+	
+	def follow(self, user):
+		if not self.is_following(user):
+			f = Follow(follower = self, followed = user)
+			db.session.add(f)
+	#关注某用户
+	
+	def unfollow(self, user):
+		f = self.followed.filter_by(followed_id = user.id).first()
+		if f:
+			db.session.delete(f)
+	#不再关注某用户
+	
+	def is_following(self, user):
+		return self.followed.filter_by(
+			followed_id = user.id).first() is not None
+	#寻找你关注的用户
+	
+	def is_followed_by(self, user):
+		return self.followers.filter_by(
+			follower_id = user.id).first() is not None
+	#寻找关注你的用户
+			
 	def __repr__(self):
 		return '<User %r>' % self.username
 		#返回一个字符串，以供调试和测试
@@ -305,3 +352,4 @@ class AnonymousUser(AnonymousUserMixin):
 	#没有管理员权限
 login_manager.anonymous_user = AnonymousUser
 #把AnonymousUser类传给login_manager的anonymous_user属性
+
