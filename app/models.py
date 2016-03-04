@@ -289,7 +289,16 @@ class User(UserMixin, db.Model):
 		return self.followers.filter_by(
 			follower_id = user.id).first() is not None
 	#寻找关注你的用户
-			
+	
+	@property
+	#将followed_posts定义为属性
+	def followed_posts(self):
+		return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
+			.filter(Follow.follower_id == self.id)
+	#Post.query.join(Follow)表示返回的为Post对象，联结对象为Follow
+	#Follow.followed_id == Post.author_id表示是两个表中的这两个字段相等才联结
+	#filter(Follow.follower_id == self.id)表示在Follow表中过滤出当前用户
+	#follower_id为当前用户即关注者，followed_id为其关注的用户即被关注者
 	def __repr__(self):
 		return '<User %r>' % self.username
 		#返回一个字符串，以供调试和测试
