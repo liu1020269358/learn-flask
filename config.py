@@ -29,6 +29,7 @@ class Config:
 	#管理员邮箱
 	FLASKY_POSTS_PER_PAGE = 20
 	#博客每页显示的数目为20
+	FLASKY_FOLLOWERS_PER_PAGE = 50
 	@staticmethod
 	def init_app(app):
 		pass

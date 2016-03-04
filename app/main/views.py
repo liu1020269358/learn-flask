@@ -186,12 +186,12 @@ def followed_by(username):
 		flash('Invalid user.')
 		return redirect(url_for('.index'))
 	page = request.args.get('page', 1, type = int)
-	pagination = user.followed.pageinate(
+	pagination = user.followed.paginate(
 		page, per_page = current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],
 		error_out = False)
 	follows = [{'user': item.followed, 'timestamp': item.timestamp}
-				for item in pageination.items]
-	return render_template('followers.hrml', user = user, title = "Followers of",
+				for item in pagination.items]
+	return render_template('followers.html', user = user, title = "Followers of",
 							endpoint = '.followers', pagination = pagination,
 							follows = follows)
 #显示关注用户的人的路由

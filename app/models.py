@@ -227,7 +227,12 @@ class User(UserMixin, db.Model):
 			#如果用户没有角色且不是管理员
 				self.role = Role.query.filter_by(default = True).first()
 				#给予该用户普通用户的权限
-	
+		self.followed.append(Follow(followed=self))
+		#关注自己，目的是可在首页的followers看到自己提交的blog
+		#不能写self.follow(self)
+		#因为这样就把session提交了，导致测试出错
+		#由于在这里关注了自己，但是不能在关注用户的人数中表现出来，要把关注用户人数-1
+		#用户关注的人数同理
 	def can(self, permissions):
 	#检验该用户的权限中是否包含请求的权限
 		return self.role is not None and \
@@ -299,6 +304,16 @@ class User(UserMixin, db.Model):
 	#Follow.followed_id == Post.author_id表示是两个表中的这两个字段相等才联结
 	#filter(Follow.follower_id == self.id)表示在Follow表中过滤出当前用户
 	#follower_id为当前用户即关注者，followed_id为其关注的用户即被关注者
+	
+	@staticmethod
+	def add_self_follows():
+		for user in User.query.all():
+			if not user.is_following(user):
+				user.follow(user)
+				db.session.add(user)
+				db.session.commit()
+	#这是一个静态方法，在shell中调用
+	#作用为更新数据库，使得数据库中的每个用户都关注自己
 	def __repr__(self):
 		return '<User %r>' % self.username
 		#返回一个字符串，以供调试和测试
