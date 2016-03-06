@@ -2,7 +2,7 @@
 
 import os
 from app import create_app, db
-from app.models import User, Role, Permission, Post, Follow
+from app.models import User, Role, Permission, Post, Follow, Comment
 from flask.ext.script import Manager, Shell
 from flask.ext.migrate import Migrate, MigrateCommand
 
@@ -16,7 +16,7 @@ migrate = Migrate(app, db)
 def make_shell_context():
 #为shell定义上下文函数
 	return dict(app = app, db = db, User = User, Role = Role, Permission = Permission,
-					Post = Post, Follow = Follow)
+					Post = Post, Follow = Follow, Comment = Comment)
 	#返回一个字典，包含上下文,注册了程序，数据库实例和模型
 manager.add_command("shell", Shell(make_context=make_shell_context))
 #接收make_shell_context函数作为Shell的make_context属性的值

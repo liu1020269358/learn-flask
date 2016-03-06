@@ -52,6 +52,7 @@ class Role(db.Model):
 	#因为insert_roles方法是用于更新角色，如果角色不存在，再创建新角色
 	#匿名角色不需要表示出来，这个角色就是为了表示不再数据库中的用户
 	#目前只有三种角色（包括匿名四种）
+	
 	@staticmethod
 	def insert_roles():
 		roles = {
@@ -131,6 +132,8 @@ class User(UserMixin, db.Model):
 								lazy = 'dynamic',
 								cascade = 'all, delete-orphan')
 	#与上面相反
+	comments = db.relationship('Comment', backref = 'author', lazy = 'dynamic')
+	#与comments的一对多
 	@property
 	def password(self):
 		raise AttributeError('password is not a readable attribute')
@@ -326,7 +329,8 @@ class Post(db.Model):
 	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 	#包含主体文本和时间戳和一个外键
 	body_html = db.Column(db.Text)
-	
+	comments = db.relationship('Comment', backref = 'post', lazy = 'dynamic')
+	#与comments的一对多
 	@staticmethod
 	def generate_fake(count =100):
 		from random import seed, randint
@@ -359,6 +363,30 @@ class Post(db.Model):
 db.event.listen(Post.body, 'set', Post.on_changed_body)
 #on_changed_body函数注册在body字段上，是SQLAlchemy"set"事件的监听程序
 #意味着制药类实例body字段设了新值，函数就会被自动调用
+
+class Comment(db.Model):
+	__tablename__ = 'comments'
+	id = db.Column(db.Integer, primary_key = True)
+	body = db.Column(db.Text)
+	body_html = db.Column(db.Text)
+	timestamp = db.Column(db.DateTime, index = True, default = datetime.utcnow)
+	disabled = db.Column(db.Boolean)
+	#查禁不当评论
+	author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+	post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
+	
+	@staticmethod
+	def on_changed_body(target, value, oldvalue, initiator):
+		allowed_tags = ['a', 'abbr', 'acronym', 'b', 'code', 'em', 'i',
+						'strong']
+		target.body_html = bleach.linkify(bleach.clean(
+			markdown(value, output_format = 'html'),
+			tags = allowed_tags, strip = True))
+#类似于Post
+db.event.listen(Comment.body, 'set', Comment.on_changed_body)
+#监听'set'事件
+#修改comments时触发
+
 @login_manager.user_loader
 def load_user(user_id):
 	return User.query.get(int(user_id))
@@ -376,4 +404,3 @@ class AnonymousUser(AnonymousUserMixin):
 	#没有管理员权限
 login_manager.anonymous_user = AnonymousUser
 #把AnonymousUser类传给login_manager的anonymous_user属性
-

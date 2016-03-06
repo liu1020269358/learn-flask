@@ -67,3 +67,8 @@ class PostForm(Form):
 	body = PageDownField("What's on your mind?", validators = [Required()])
 	submit = SubmitField('Submit')
 #提交博客的表单
+
+class CommentForm(Form):
+	body = StringField('', validators = [Required()])
+	submit = SubmitField('Submit')
+#提交评论的表单
