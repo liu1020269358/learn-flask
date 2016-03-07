@@ -17,15 +17,15 @@ class Config:
 	#电子邮件服务器的端口
 	MAIL_USE_SSL = True
 	#启用TLS协议
-	MAIL_USERNAME = '1020269358@qq.com'
+	MAIL_USERNAME = 'example@qq.com'
 	#邮件账户的用户名
-	MAIL_PASSWORD = 'www5030706'
+	MAIL_PASSWORD = 'pass_word'
 	#邮件账户的密码
 	FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'
 	#邮件主题的前缀
-	FLASKY_MAIL_SENDER = '1020269358@qq.com'
+	FLASKY_MAIL_SENDER = 'example@qq.com'
 	#邮件的发送者
-	FLASKY_ADMIN = '1020269358@qq.com'
+	FLASKY_ADMIN = 'example@qq.com'
 	#管理员邮箱
 	FLASKY_POSTS_PER_PAGE = 20
 	#博客每页显示的数目为20
